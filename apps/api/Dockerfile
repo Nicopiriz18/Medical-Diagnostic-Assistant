@@ -1,10 +1,27 @@
 FROM python:3.11-slim
 
 WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app ./app
+# Copy application code
+COPY . .
+
+# Create uploads directory
+RUN mkdir -p /app/uploads
+
+# Make startup script executable
+RUN chmod +x scripts/startup.sh
+
+# Expose port
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run startup script and then start server
+CMD ["sh", "-c", "./scripts/startup.sh && uvicorn app.main:app --host 0.0.0.0 --port 8000"]

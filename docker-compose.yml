@@ -1,10 +1,31 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: medassist
+      POSTGRES_USER: medassist_user
+      POSTGRES_PASSWORD: medassist_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medassist_user -d medassist"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   api:
     build: ./apps/api
     ports:
       - "8000:8000"
     env_file:
       - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./uploads:/app/uploads
 
   web:
     build:
@@ -17,3 +38,6 @@ services:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
     depends_on:
       - api
+
+volumes:
+  postgres_data:
