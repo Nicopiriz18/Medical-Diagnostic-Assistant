@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Startup script for Medical Diagnostic Assistant
 # This script initializes the database

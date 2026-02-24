@@ -45,33 +45,47 @@ export default function Page() {
   }, []);
 
   const createSession = async () => {
+    const maxRetries = 3;
+    const baseDelayMs = 1000;
+
     try {
       setLoading(true);
       setError(null);
-      
-      const response = await fetch(`${API_URL}/v1/sessions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      });
 
-      if (!response.ok) {
-        throw new Error('Error al crear la sesión');
+      let lastError: unknown;
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          const response = await fetch(`${API_URL}/v1/sessions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+          });
+
+          if (!response.ok) {
+            throw new Error('Error al crear la sesión');
+          }
+
+          const data = await response.json();
+          setSessionId(data.id);
+
+          const welcomeMessage: Message = {
+            id: 0,
+            role: 'assistant',
+            content: '👋 ¡Hola! Soy tu asistente médico inteligente.\n\nPuedo ayudarte a:\n• Hacer un análisis clínico detallado\n• Analizar imágenes médicas\n• Generar diagnósticos diferenciales\n\n¿Cuál es tu consulta hoy?',
+            timestamp: new Date().toISOString()
+          };
+
+          setMessages([welcomeMessage]);
+          setShowWelcome(false);
+          return;
+        } catch (err) {
+          lastError = err;
+          if (attempt < maxRetries - 1) {
+            await new Promise(r => setTimeout(r, baseDelayMs * (attempt + 1)));
+          }
+        }
       }
-
-      const data = await response.json();
-      setSessionId(data.id);
-      
-      // Mensaje de bienvenida del sistema
-      const welcomeMessage: Message = {
-        id: 0,
-        role: 'assistant',
-        content: '👋 ¡Hola! Soy tu asistente médico inteligente.\n\nPuedo ayudarte a:\n• Hacer un análisis clínico detallado\n• Analizar imágenes médicas\n• Generar diagnósticos diferenciales\n\n¿Cuál es tu consulta hoy?',
-        timestamp: new Date().toISOString()
-      };
-      
-      setMessages([welcomeMessage]);
-      setShowWelcome(false);
+      throw lastError;
     } catch (err) {
       setError('No se pudo conectar con el servidor. Verifica que la API esté corriendo.');
       console.error(err);
